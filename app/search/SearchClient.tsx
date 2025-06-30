@@ -2,8 +2,8 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
+import Link from 'next/link';
 
 type Film = {
   id: string;
@@ -15,47 +15,44 @@ type Film = {
 export default function SearchClient() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
-  const [results, setResults] = useState<Film[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  const [films, setFilms] = useState<Film[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
-      if (!query) return setResults([]);
-
-      setLoading(true);
+    const fetchData = async () => {
       const { data, error } = await supabase
         .from('films')
         .select('*')
         .ilike('title', `%${query}%`);
-      if (!error && data) setResults(data);
+      
+      if (error) {
+        console.error(error.message);
+      } else {
+        setFilms(data || []);
+      }
+
       setLoading(false);
-    }
+    };
+
     fetchData();
   }, [query]);
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">
-        Hasil pencarian: <span className="italic">{query}</span>
-      </h1>
+  if (loading) return <p>Loading...</p>;
 
-      {loading ? (
-        <p className="text-gray-500 dark:text-gray-400">Memuat...</p>
-      ) : results.length === 0 ? (
-        <p className="text-gray-500 italic">Tidak ada hasil.</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {results.map((f) => (
-            <Link key={f.id} href={`/film/${f.id}`}>
-              <div className="bg-white dark:bg-gray-800 p-4 rounded shadow hover:scale-[1.02] transition cursor-pointer">
-                <img src={f.image_url} alt={f.title} className="h-48 w-full object-cover rounded mb-2" />
-                <h2 className="text-lg font-semibold">{f.title}</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{f.release_year}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+  if (films.length === 0) return <p>Tidak ada hasil ditemukan untuk: "{query}"</p>;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+      {films.map((film) => (
+        <Link href={`/film/${film.id}`} key={film.id}>
+          <div className="bg-white dark:bg-gray-800 shadow rounded p-4 hover:shadow-lg transition">
+            <img src={film.image_url} alt={film.title} className="w-full h-48 object-cover rounded mb-2" />
+            <h2 className="text-lg font-semibold">{film.title}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{film.release_year}</p>
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
